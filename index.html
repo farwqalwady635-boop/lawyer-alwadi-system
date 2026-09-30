@@ -1,0 +1,725 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0f4c5c"><title>نظام المحامي عبدالرحمن الوادي</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f4f7f9;color:#17212b}.app{display:flex;min-height:100vh}.side{width:245px;background:#1476ee;color:#fff;padding:18px;position:fixed;right:0;top:0;bottom:0;overflow:auto}.brand{font-size:21px;font-weight:bold;margin-bottom:20px;line-height:1.5}.nav button{display:block;width:100%;padding:12px 10px;margin:5px 0;border:0;border-radius:8px;background:transparent;color:#fff;text-align:right;cursor:pointer;font-size:14px}.nav button:hover,.nav button.active{background:rgba(255,255,255,.18)}.main{margin-right:245px;width:calc(100% - 245px);padding:22px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px}.top h1{margin:0;font-size:24px}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;background:#0f6677;color:#fff}.btn.secondary{background:#e5edf0;color:#16343f}.btn.danger{background:#b42318}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 10px #0000000b}.label{color:#64748b;font-size:13px}.value{font-size:25px;font-weight:bold;margin-top:8px}.panel{background:#fff;border-radius:12px;padding:16px;margin-bottom:18px;box-shadow:0 2px 10px #0000000b}.panel h2{font-size:18px;margin:0 0 14px}.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.field label{display:block;font-size:12px;color:#52606d;margin-bottom:5px}.field input,.field select,.field textarea{width:100%;padding:9px;border:1px solid #ccd6dc;border-radius:7px;font:inherit}.field textarea{min-height:70px}.field.full{grid-column:1/-1}.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:800px}.table th,.table td{border-bottom:1px solid #e8edf0;padding:9px 8px;text-align:right;white-space:nowrap}.table th{background:#eef5f7}.table tr:hover td{background:#fafcfd}.search{width:100%;padding:10px;border:1px solid #ccd6dc;border-radius:7px;margin-bottom:10px}.hide{display:none!important}.muted{color:#64748b}.badge{display:inline-block;padding:4px 7px;border-radius:99px;background:#e8f2f5;font-size:12px}.positive{color:#137333}.negative{color:#b42318}.notice{padding:11px;border-radius:8px;background:#fff7e6;margin-bottom:12px}.footer{font-size:12px;color:#64748b;text-align:center;padding:20px}.modal{position:fixed;inset:0;background:#0007;display:flex;align-items:center;justify-content:center;padding:15px;z-index:5}.modalbox{background:#fff;border-radius:12px;width:min(700px,100%);max-height:90vh;overflow:auto;padding:18px}.mobile{display:none}@media(max-width:800px){.side{position:static;width:100%;height:auto}.app{display:block}.main{margin:0;width:100%;padding:12px}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.nav button{text-align:center;font-size:12px}.mobile{display:block}.top{align-items:flex-start}.top h1{font-size:20px}.table{min-width:700px}}
+@media print{.side,.top,.actions,.search,.btn{display:none!important}.main{margin:0;width:100%;padding:0}.panel{box-shadow:none}body{background:#fff}} </style></head><body>
+<div class="app"><aside class="side"><div class="brand">⚖️ المحامي عبدالرحمن الوادي<br><span style="font-size:12px;font-weight:normal">نظام إدارة القضايا والجلسات والتقارير والطباعة وPDF</span></div><div class="nav" id="nav"></div><div class="footer">مزامنة مركزية — يعمل داخل شبكة المكتب، مع دعم العمل المحلي عند انقطاع الخادم</div></aside><main class="main"><div class="top"><h1 id="title">الرئيسية</h1><div class="actions"><span class="badge">المزامنة: <b id="syncStatus">متصلة</b></span><span class="badge">المستخدم: <b id="topUser">--</b></span><button class="btn secondary" onclick="backup()">نسخة احتياطية</button><button class="btn secondary" onclick="restore()">استعادة</button><button class="btn secondary" onclick="syncNow().then(()=>alert('تمت المزامنة'))">🔄 مزامنة الآن</button></div></div><div id="content"></div></main></div><input type="file" id="file" accept="application/json" class="hide">
+<script>
+const modules={
+ dashboard:'الرئيسية',clients:'الموكلون',lawyers:'المحامون',courts:'المحاكم',cases:'القضايا',sessions:'الجلسات',fees:'الأتعاب',income:'الإيرادات',expenses:'المصروفات',lawyerAccounts:'حساب المحامين',cash:'الصندوق',advances:'السلف والعهد',payroll:'الرواتب',reports:'التقارير',archive:'الأرشيف',users:'المستخدمون',settings:'الإعدادات',password:'تغيير كلمة المرور'};
+const schemas={
+clients:['رقم الموكل','اسم الموكل','رقم الهاتف','العنوان','الصفة','ملاحظات'],
+lawyers:['رقم المحامي','اسم المحامي','الصفة','التخصص','الهاتف','نسبة الأتعاب %','ملاحظات'],
+courts:['رمز المحكمة','اسم المحكمة','المحافظة','نوع المحكمة','الدائرة/الشعبة','العنوان','ملاحظات'],
+cases:['رقم القضية','اسم القضية/الموضوع','رقم الموكل','اسم الموكل','الخصم','المحكمة','الدائرة/الشعبة','درجة التقاضي','المحامي المسؤول','حالة القضية','تاريخ التسجيل','آخر إجراء','الإجراء القادم','ملاحظات'],
+sessions:['رقم الجلسة','رقم القضية','اسم الموكل','المركز القانوني','تاريخ الجلسة','وقت الجلسة','المحكمة','الدائرة/الشعبة','المحامي الحاضر','نوع الجلسة','ما تم في الجلسة','قرار/تأجيل','موعد الجلسة القادمة','ملاحظات'],
+fees:['رقم العملية','رقم القضية','رقم الموكل','نوع الأتعاب','إجمالي الأتعاب','المدفوع','المتبقي','تاريخ الدفع','طريقة الدفع','ملاحظات'],
+income:['رقم السند','التاريخ','رقم القضية','رقم الموكل','اسم الموكل','نوع الإيراد','المبلغ','طريقة الدفع','المحامي','وصف/بيان','ملاحظات'],
+expenses:['رقم السند','التاريخ','رقم القضية','رقم الموكل','نوع المصروف','المبلغ','دفع بواسطة','طريقة الدفع','وصف المصروف','ملاحظات'],
+lawyerAccounts:['رقم العملية','رقم القضية','الموكل','المحامي','إجمالي أتعاب القضية','نسبة المحامي %','حصة المحامي','حصة المؤسسة','المدفوع للمحامي','المتبقي للمحامي','تاريخ التسوية','ملاحظات'],
+advances:['رقم السلفة','المستفيد','الصفة','التاريخ','مبلغ السلفة','المصروف/المسوى','المتبقي','تاريخ التسوية','ملاحظات'],
+payroll:['رقم الموظف','الاسم','الصفة','الشهر','الراتب الأساسي','بدلات/مكافآت','خصومات','سلف','صافي المستحق','تاريخ الصرف','ملاحظات'],archive:['رقم الملف','رقم القضية','اسم الموكل','حالة القضية','تاريخ الأرشفة','ملاحظة']};
+let db=JSON.parse(localStorage.getItem('lawFirmDB')||'{}');
+for(const k of Object.keys(schemas)) if(!Array.isArray(db[k])) db[k]=[];
+if(!Array.isArray(db.archive_moving)) db.archive_moving=[];
+if(!Array.isArray(db.archive_ended)) db.archive_ended=[];
+if(!Array.isArray(db.users)||!db.users.length) db.users=[{
+  ['رقم المستخدم']:'USR-ADMIN',['اسم المستخدم']:'admin',['الاسم الكامل']:'مدير المؤسسة',
+  ['الدور']:'مدير المؤسسة',['كلمة المرور']:'1234',['الحالة']:'فعال',
+  ['المشرف']:'', ['المستخدمون التابعون']:[], ['الصلاحيات']:'كاملة',
+  ['آخر دخول']:'', ['آخر نشاط']:'', ['ملاحظات']:'الحساب الافتراضي'
+}];
+if(!Array.isArray(db.activity)) db.activity=[];
+
+const SYNC_ENABLED = location.protocol !== 'file:';
+const SYNC_API = '/api';
+let serverSnapshot = null;
+let syncBusy = false;
+let syncTimer = null;
+let lastServerVersion = 0;
+const DEVICE_ID = (()=>{let x=localStorage.getItem('lawFirmDeviceId');if(!x){x='DEV-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);localStorage.setItem('lawFirmDeviceId',x)}return x})();
+
+function ensureRecordIds(){
+  for(const k of Object.keys(schemas)){
+    if(!Array.isArray(db[k])) db[k]=[];
+    db[k].forEach(r=>{ if(!r.__rid) r.__rid = id('REC'); });
+  }
+  for(const k of ['users','activity','archive_moving','archive_ended']){
+    if(!Array.isArray(db[k])) db[k]=[];
+    db[k].forEach(r=>{ if(!r.__rid) r.__rid = id('REC'); });
+  }
+}
+function cleanForSync(obj){ return JSON.parse(JSON.stringify(obj)); }
+
+async function apiJSON(url, options={}){
+  const res=await fetch(url, Object.assign({headers:{'Content-Type':'application/json'}}, options));
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error||('HTTP '+res.status));
+  return data;
+}
+function localSave(){
+  localStorage.setItem('lawFirmDB',JSON.stringify(db));
+}
+function save(){
+  ensureRecordIds();
+  localSave();
+  if(SYNC_ENABLED) queueSync();
+}
+let syncQueued=false;
+function queueSync(){
+  syncQueued=true;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>syncNow(),120);
+}
+async function syncNow(){
+  if(!SYNC_ENABLED || syncBusy || !syncQueued) return;
+  syncQueued=false; syncBusy=true;
+  try{
+    ensureRecordIds();
+    const payload={deviceId:DEVICE_ID, db:cleanForSync(db), baseVersion:lastServerVersion};
+    const result=await apiJSON(SYNC_API+'/state',{
+      method:'POST',
+      body:JSON.stringify(payload)
+    });
+    if(result.db){
+      db=result.db;
+      ensureUserFields();
+      ensureRecordIds();
+      serverSnapshot=cleanForSync(db);
+      lastServerVersion=result.version||lastServerVersion;
+      localSave();
+    }
+  }catch(e){
+    console.warn('تعذر مزامنة البيانات:',e);
+  }finally{
+    syncBusy=false;
+    if(syncQueued) queueSync();
+  }
+}
+async function initialSync(){
+  if(!SYNC_ENABLED) return;
+  try{
+    const result=await apiJSON(SYNC_API+'/state');
+    if(result.db && Object.keys(result.db).length){
+      db=result.db;
+      ensureUserFields();
+      ensureRecordIds();
+      serverSnapshot=cleanForSync(db);
+      lastServerVersion=result.version||0;
+      localSave();
+    }else{
+      ensureRecordIds();
+      await syncNow();
+    }
+  }catch(e){
+    console.warn('الخادم غير متاح؛ سيتم استخدام البيانات المحلية مؤقتاً.',e);
+  }
+}
+async function pollServer(){
+  if(!SYNC_ENABLED || syncBusy) return;
+  try{
+    const result=await apiJSON(SYNC_API+'/state?version='+encodeURIComponent(lastServerVersion));
+    if(result.changed && result.db){
+      db=result.db;
+      ensureUserFields();
+      ensureRecordIds();
+      serverSnapshot=cleanForSync(db);
+      lastServerVersion=result.version||lastServerVersion;
+      localSave();
+      const k=location.hash.slice(1)||'dashboard';
+      if(currentUser) { nav(); render(); }
+    }
+  }catch(e){}
+}
+function startSync(){
+  if(!SYNC_ENABLED) return;
+  setInterval(pollServer,1500);
+  window.addEventListener('online',()=>syncNow());
+}
+
+function ensureUserFields(){
+  db.users.forEach(u=>{
+    if(!Array.isArray(u['المستخدمون التابعون'])) u['المستخدمون التابعون']=[];
+    if(u['المشرف']==null) u['المشرف']='';
+    if(u['الصلاحيات']==null) u['الصلاحيات']=u['الدور']==='مدير المؤسسة'?'كاملة':'قياسية';
+    if(u['آخر دخول']==null) u['آخر دخول']='';
+    if(u['آخر نشاط']==null) u['آخر نشاط']='';
+  });
+}
+ensureUserFields();
+function logActivity(action, details=''){
+  if(!currentUser) return;
+  db.activity.unshift({
+    ['التاريخ والوقت']:new Date().toLocaleString('ar-YE'),
+    ['اسم المستخدم']:currentUser['اسم المستخدم']||'',
+    ['الاسم الكامل']:currentUser['الاسم الكامل']||'',
+    ['العملية']:action, ['التفاصيل']:details
+  });
+  db.activity=db.activity.slice(0,1000);
+  const u=db.users.find(x=>x['اسم المستخدم']===currentUser['اسم المستخدم']);
+  if(u) u['آخر نشاط']=new Date().toLocaleString('ar-YE');
+  save();
+}
+function money(n){return (Number(n)||0).toLocaleString('ar-YE')+' ريال'}
+function id(prefix){return prefix+'-'+Date.now().toString().slice(-7)}
+function nav(){document.getElementById('nav').innerHTML=Object.entries(modules)
+.filter(([k])=>canAccessModule(k))
+.map(([k,v])=>`<button class="${location.hash.slice(1)==k?'active':''}" onclick="go('${k}')">${icon(k)} ${v}</button>`).join('')}
+function icon(k){return {dashboard:'▣',clients:'👤',lawyers:'⚖',courts:'🏛',cases:'📁',sessions:'📅',fees:'💰',income:'➕',expenses:'➖',lawyerAccounts:'👥',cash:'💵',advances:'🧾',payroll:'👔',reports:'📊',archive:'🗂️',users:'🔐',settings:'⚙️',password:'🔑'}[k]||'•'}
+function go(k){if(!canAccessModule(k)){alert('ليس لديك صلاحية الوصول إلى هذا القسم.');return}location.hash=k;nav();render()}
+window.onhashchange=()=>{nav();render()};
+
+function updateSyncStatus(ok=true){
+  const el=document.getElementById('syncStatus');
+  if(el) el.textContent=SYNC_ENABLED?(ok?'متصلة':'غير متصلة — محلياً'):'محلي';
+}
+function render(){
+ let k=location.hash.slice(1)||'dashboard';
+ if(!canAccessModule(k)) k='dashboard';
+ document.getElementById('title').textContent=modules[k]||modules.dashboard;
+ let fn=window['render_'+k]||renderTable;
+ document.getElementById('content').innerHTML=fn(k);
+ if(document.getElementById('topUser')) document.getElementById('topUser').textContent=(currentUser?.['الاسم الكامل']||currentUser?.['اسم المستخدم']||'');
+ afterRender(k)
+}
+function render_dashboard(){const inc=sum('income','المبلغ'), exp=sum('expenses','المبلغ'), fees=db.fees.reduce((a,r)=>a+Number(r['إجمالي الأتعاب']||0),0), paid=db.income.reduce((a,r)=>a+(r['نوع الإيراد']==='أتعاب قضية'?Number(r['المبلغ']||0):0),0), today=new Date().toISOString().slice(0,10), next=db.sessions.filter(r=>r['تاريخ الجلسة']>=today).sort((a,b)=>(a['تاريخ الجلسة']||'').localeCompare(b['تاريخ الجلسة']||'' )).slice(0,5);return `<div class="cards"><div class="card"><div class="label">إجمالي القضايا</div><div class="value">${visibleRows('cases').length}</div></div><div class="card"><div class="label">القضايا المفتوحة</div><div class="value">${visibleRows('cases').filter(r=>r['حالة القضية']!=='مغلقة').length}</div></div><div class="card"><div class="label">إجمالي الإيرادات</div><div class="value">${money(inc)}</div></div><div class="card"><div class="label">إجمالي المصروفات</div><div class="value">${money(exp)}</div></div><div class="card"><div class="label">صافي الصندوق</div><div class="value ${inc-exp>=0?'positive':'negative'}">${money(inc-exp)}</div></div><div class="card"><div class="label">إجمالي الأتعاب</div><div class="value">${money(fees)}</div></div></div><div class="panel"><h2>الجلسات القادمة</h2>${next.length?table(sessionsView(next),['رقم الجلسة','رقم القضية','تاريخ الجلسة','وقت الجلسة','المحكمة','المحامي الحاضر']):'<div class="muted">لا توجد جلسات مسجلة قادمة.</div>'}</div>`}
+function sessionsView(rows){return rows.map(r=>['رقم الجلسة','رقم القضية','تاريخ الجلسة','وقت الجلسة','المحكمة','المحامي الحاضر'].map(x=>r[x]||''))}
+function sum(s,c){return db[s].reduce((a,r)=>a+Number(r[c]||0),0)}
+function renderTable(k){let sc=schemas[k]; if(!sc)return '<div class="panel">غير متاح</div>';return `<div class="panel"><div class="actions" style="justify-content:space-between"><button class="btn" onclick="openForm('${k}')">＋ إضافة سجل</button><button class="btn secondary" onclick="exportCSV('${k}')">تصدير CSV</button><button class="btn secondary" onclick="printModule('${k}')">🖨️ طباعة</button><button class="btn secondary" onclick="pdfModule('${k}')">📄 PDF</button></div><br><input class="search" id="q" placeholder="بحث في جميع الحقول..." oninput="drawTable('${k}')"><div id="tbl"></div></div>`}
+function afterRender(k){if(schemas[k])drawTable(k)}
+function drawTable(k){
+ const q=(document.getElementById('q')?.value||'').toLowerCase();
+ let rows=visibleRows(k).filter(r=>JSON.stringify(r).toLowerCase().includes(q));
+ document.getElementById('tbl').innerHTML=table(rows.map((r)=>schemas[k].map(c=>r[c]??'')),schemas[k],true,k)
+}
+function table(rows,heads,actions=false,k=''){return `<div class="tablewrap"><table class="table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}${actions?'<th>إجراء</th>':''}</tr></thead><tbody>${rows.map((r,i)=>`<tr>${r.map(v=>`<td>${v??''}</td>`).join('')}${actions?`<td><button class="btn secondary" onclick="editRow('${k}',${i})">تعديل</button> <button class="btn danger" onclick="delRow('${k}',${i})">حذف</button></td>`:''}</tr>`).join('')}</tbody></table></div>`}
+function optionsFor(c,k){if(c==='رقم الموكل')return db.clients.map(r=>r['رقم الموكل']);if(c==='رقم القضية')return db.cases.map(r=>r['رقم القضية']);return []}
+function openForm(k,idx=null){const sc=schemas[k], old=idx==null?{}:db[k][idx];let fields=sc.map(c=>{let val=old[c]??'';let type=/تاريخ|الشهر/.test(c)?'date':/المبلغ|الأتعاب|نسبة|الراتب|بدلات|خصومات|سلف|صافي|المدفوع|الحصة|المتبقي/.test(c)?'number':'text';let opts=optionsFor(c,k);if(c==='اسم الموكل'&&k==='income') return `<div class="field"><label>${c}</label><input name="${c}" value="${esc(val)}" readonly></div>`;if(opts.length)return `<div class="field"><label>${c}</label><select name="${c}"><option value="">اختر</option>${opts.map(o=>`<option ${String(o)===String(val)?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;return `<div class="field"><label>${c}</label>${c==='ملاحظات'||c.includes('وصف')||c.includes('ما تم')?`<textarea name="${c}">${esc(val)}</textarea>`:`<input type="${type}" name="${c}" value="${esc(val)}">`}</div>`}).join('');let modal=document.createElement('div');modal.className='modal';modal.id='modal';modal.innerHTML=`<div class="modalbox"><h2>${idx==null?'إضافة':'تعديل'} ${modules[k]}</h2><form id="f"><div class="formgrid">${fields}</div><br><div class="actions"><button class="btn" type="submit">حفظ</button><button class="btn secondary" type="button" onclick="closeModal()">إلغاء</button></div></form></div>`;document.body.appendChild(modal);document.getElementById('f').onsubmit=e=>{e.preventDefault();let o={};new FormData(e.target).forEach((v,c)=>o[c]=v);if(k==='income'&&o['رقم الموكل']){let cl=db.clients.find(x=>String(x['رقم الموكل'])===String(o['رقم الموكل']));o['اسم الموكل']=cl?.['اسم الموكل']||''} if(k==='cases'&&o['رقم الموكل']){let cl=db.clients.find(x=>String(x['رقم الموكل'])===String(o['رقم الموكل']));o['اسم الموكل']=cl?.['اسم الموكل']||''} if(k==='archive'&&o['رقم القضية']){let ca=db.cases.find(x=>String(x['رقم القضية'])===String(o['رقم القضية']));if(ca?.['اسم الموكل'])o['اسم الموكل']=ca['اسم الموكل']} if(k==='fees'){o['المدفوع']=o['المدفوع']||'0';o['المتبقي']=Math.max(0,Number(o['إجمالي الأتعاب']||0)-Number(o['المدفوع']||0))} if(k==='advances')o['المتبقي']=Math.max(0,Number(o['مبلغ السلفة']||0)-Number(o['المصروف/المسوى']||0)); if(k==='payroll')o['صافي المستحق']=Number(o['الراتب الأساسي']||0)+Number(o['بدلات/مكافآت']||0)-Number(o['خصومات']||0)-Number(o['سلف']||0); if(k==='lawyerAccounts'){o['حصة المحامي']=(Number(o['إجمالي أتعاب القضية']||0)*Number(o['نسبة المحامي %']||0)/100);o['حصة المؤسسة']=Number(o['إجمالي أتعاب القضية']||0)-Number(o['حصة المحامي']||0);o['المتبقي للمحامي']=Number(o['حصة المحامي']||0)-Number(o['المدفوع للمحامي']||0)} if(!isAdmin() && idx==null) o['أنشأ بواسطة']=currentUser?.['اسم المستخدم']||'';
+if(idx==null){db[k].push(o);logActivity('إضافة سجل',modules[k]||k)}
+else{db[k][idx]=o;logActivity('تعديل سجل',modules[k]||k)}
+save();closeModal();render()};}
+function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;')}
+function closeModal(){document.getElementById('modal')?.remove()}
+function resolveRowIndex(k,i){
+ const rows=visibleRows(k); const target=rows[i];
+ return target ? db[k].indexOf(target) : -1;
+}
+function editRow(k,i){
+ if(k==='users')openUserForm(i);
+ else{
+   const real=resolveRowIndex(k,i);
+   if(real<0)return alert('السجل غير متاح.');
+   openForm(k,real);
+ }
+}
+function delRow(k,i){
+ if(k==='users'&&!canManageUsers())return alert('ليس لديك صلاحية.');
+ const real=resolveRowIndex(k,i);
+ if(real<0)return alert('السجل غير متاح.');
+ if(confirm('حذف السجل؟')){db[k].splice(real,1);logActivity('حذف سجل',modules[k]||k);save();render()}
+}
+
+function archiveNextNumber(type='moving'){
+ const arr=type==='ended'?(db.archive_ended||[]):(db.archive_moving||[]);
+ let max=0;
+ arr.forEach(r=>{
+   const m=String(r['رقم الملف']||'').match(/(\d+)$/);
+   if(m) max=Math.max(max,Number(m[1])||0);
+ });
+ return String(max+1).padStart(4,'0');
+}
+function archiveStatusForCase(caseRow){
+ const st=String(caseRow?.['حالة القضية']||'').trim();
+ return ['منتهية','مغلقة'].includes(st)?'ended':'moving';
+}
+function archiveRows(type){
+ return type==='ended'?(db.archive_ended||[]):(db.archive_moving||[]);
+}
+function archiveCaseRows(type){
+ const list=archiveRows(type);
+ return list.map((a,i)=>{
+   const c=(db.cases||[]).find(x=>String(x['رقم القضية']||'')===String(a['رقم القضية']||''));
+   return {...a, _case:c||{}};
+ });
+}
+function createArchiveFileFromCase(caseNo){
+ const c=(db.cases||[]).find(x=>String(x['رقم القضية']||'')===String(caseNo||''));
+ if(!c) return alert('لم يتم العثور على القضية.');
+ const type=archiveStatusForCase(c);
+ const target=type==='ended'?db.archive_ended:db.archive_moving;
+ const existing=target.find(x=>String(x['رقم القضية']||'')===String(caseNo));
+ if(existing) return alert('القضية موجودة مسبقاً في الأرشيف الخاص بها برقم ملف: '+existing['رقم الملف']);
+ const o={
+   ['رقم الملف']:(type==='ended'?'م-منتهية-':'م-متحركة-')+archiveNextNumber(type),
+   ['رقم القضية']:c['رقم القضية']||'',
+   ['اسم الموكل']:c['اسم الموكل']||'',
+   ['حالة القضية']:c['حالة القضية']||'',
+   ['تاريخ الأرشفة']:new Date().toISOString().slice(0,10),
+   ['أنشأ بواسطة']:currentUser?.['اسم المستخدم']||'admin',
+   ['ملاحظة']:''
+ };
+ target.push(o);
+ logActivity('أرشفة قضية',o['رقم الملف']+' — '+o['رقم القضية']);
+ save(); render();
+}
+
+
+function render_archive(){
+ const moving=archiveCaseRows('moving'), ended=archiveCaseRows('ended');
+ const makeTable=(rows,type)=>{
+   const heads=['رقم الملف','رقم القضية','اسم الموكل','حالة القضية','تاريخ الأرشفة','ملاحظة'];
+   const data=rows.map((r,i)=>heads.map(h=>r[h]||''));
+   return `<div class="tablewrap"><table class="table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}<th>إجراء</th></tr></thead><tbody>
+   ${rows.map((r,i)=>{
+     const real=archiveRows(type).indexOf(r);
+     return `<tr>${heads.map(h=>`<td>${esc(r[h]||'')}</td>`).join('')}
+       <td><button class="btn secondary" onclick="editArchive('${type}',${real})">تعديل</button>
+       <button class="btn danger" onclick="deleteArchive('${type}',${real})">حذف</button></td></tr>`;
+   }).join('')}
+   </tbody></table></div>`;
+ };
+ return `<div class="cards">
+   <div class="card"><div class="label">أرشيف القضايا المتحركة</div><div class="value">${moving.length}</div></div>
+   <div class="card"><div class="label">أرشيف القضايا المنتهية</div><div class="value">${ended.length}</div></div>
+   <div class="card"><div class="label">إجمالي ملفات الأرشيف</div><div class="value">${moving.length+ended.length}</div></div>
+ </div>
+ <div class="panel">
+   <h2>🗂️ أرشيف القضايا المتحركة</h2>
+   <div class="notice">يتم إنشاء رقم الملف تلقائياً بالتسلسل: <b>م-متحركة-0001</b> ثم 0002 وهكذا.</div>
+   <div class="actions">
+     <button class="btn" onclick="openArchiveForm('moving')">＋ إضافة ملف للقضايا المتحركة</button>
+     <button class="btn secondary" onclick="printArchive('moving')">🖨️ طباعة الأرشيف</button>
+     <button class="btn secondary" onclick="exportArchive('moving')">تصدير</button>
+   </div><br>
+   ${makeTable(moving,'moving')}
+ </div>
+ <div class="panel">
+   <h2>📁 أرشيف القضايا المنتهية</h2>
+   <div class="notice">يتم إنشاء رقم الملف تلقائياً بالتسلسل: <b>م-منتهية-0001</b> ثم 0002 وهكذا.</div>
+   <div class="actions">
+     <button class="btn" onclick="openArchiveForm('ended')">＋ إضافة ملف للقضايا المنتهية</button>
+     <button class="btn secondary" onclick="printArchive('ended')">🖨️ طباعة الأرشيف</button>
+     <button class="btn secondary" onclick="exportArchive('ended')">تصدير</button>
+   </div><br>
+   ${makeTable(ended,'ended')}
+ </div>
+ <div class="panel">
+   <h2>⚡ إضافة القضية إلى الأرشيف تلقائياً</h2>
+   <div class="formgrid">
+     <div class="field"><label>رقم القضية</label><select id="archiveCaseSelect">
+       <option value="">اختر القضية</option>
+       ${(visibleRows('cases')||[]).map(c=>`<option value="${esc(c['رقم القضية']||'')}">${esc(c['رقم القضية']||'')} — ${esc(c['اسم الموكل']||'')} — ${esc(c['حالة القضية']||'')}</option>`).join('')}
+     </select></div>
+   </div><br>
+   <button class="btn" onclick="archiveSelectedCase()">📥 أرشفة القضية</button>
+ </div>`;
+}
+function archiveSelectedCase(){
+ const n=document.getElementById('archiveCaseSelect')?.value;
+ if(!n)return alert('اختر القضية أولاً.');
+ createArchiveFileFromCase(n);
+}
+function openArchiveForm(type,idx=null){
+ const arr=archiveRows(type), old=idx==null?{}:arr[idx];
+ const next=idx==null?((type==='ended'?'م-منتهية-':'م-متحركة-')+archiveNextNumber(type)):old['رقم الملف'];
+ const cases=visibleRows('cases');
+ const modal=document.createElement('div'); modal.className='modal'; modal.id='modal';
+ modal.innerHTML=`<div class="modalbox"><h2>${idx==null?'إضافة':'تعديل'} ملف أرشيف</h2>
+ <div class="notice">رقم الملف يُنشأ تلقائياً ولا يحتاج إلى إدخال يدوي.</div>
+ <form id="archiveForm"><div class="formgrid">
+   <div class="field"><label>رقم الملف</label><input name="رقم الملف" value="${esc(next)}" readonly></div>
+   <div class="field"><label>رقم القضية</label><select name="رقم القضية"><option value="">اختر</option>
+     ${cases.map(c=>`<option value="${esc(c['رقم القضية']||'')}" ${String(c['رقم القضية']||'')===String(old['رقم القضية']||'')?'selected':''}>${esc(c['رقم القضية']||'')} — ${esc(c['اسم الموكل']||'')} — ${esc(c['حالة القضية']||'')}</option>`).join('')}
+   </select></div>
+   <div class="field"><label>اسم الموكل</label><input name="اسم الموكل" value="${esc(old['اسم الموكل']||'')}" readonly></div>
+   <div class="field"><label>حالة القضية</label><input name="حالة القضية" value="${esc(old['حالة القضية']||'')}" readonly></div>
+   <div class="field"><label>تاريخ الأرشفة</label><input type="date" name="تاريخ الأرشفة" value="${esc(old['تاريخ الأرشفة']||new Date().toISOString().slice(0,10))}"></div>
+   <div class="field full"><label>ملاحظة</label><textarea name="ملاحظة">${esc(old['ملاحظة']||'')}</textarea></div>
+ </div><br><div class="actions"><button class="btn">حفظ</button><button class="btn secondary" type="button" onclick="closeModal()">إلغاء</button></div></form></div>`;
+ document.body.appendChild(modal);
+ const sel=modal.querySelector('[name="رقم القضية"]');
+ sel.onchange=()=>{const c=cases.find(x=>String(x['رقم القضية'])===String(sel.value));modal.querySelector('[name="اسم الموكل"]').value=c?.['اسم الموكل']||'';modal.querySelector('[name="حالة القضية"]').value=c?.['حالة القضية']||''};
+ document.getElementById('archiveForm').onsubmit=e=>{
+   e.preventDefault(); const o={}; new FormData(e.target).forEach((v,c)=>o[c]=v);
+   if(!o['رقم القضية'])return alert('اختر رقم القضية.');
+   const c=cases.find(x=>String(x['رقم القضية'])===String(o['رقم القضية']));
+   if(c && archiveStatusForCase(c)!==type)return alert('حالة القضية لا تتوافق مع الأرشيف المختار.');
+   const duplicate=arr.some((x,i)=>i!==idx&&String(x['رقم القضية'])===String(o['رقم القضية']));
+   if(duplicate)return alert('القضية موجودة مسبقاً في هذا الأرشيف.');
+   o['أنشأ بواسطة']=old['أنشأ بواسطة']||currentUser?.['اسم المستخدم']||'admin';
+   if(idx==null)arr.push(o);else arr[idx]=o;
+   save(); logActivity(idx==null?'إضافة ملف أرشيف':'تعديل ملف أرشيف',o['رقم الملف']); closeModal(); render();
+ };
+}
+function editArchive(type,idx){openArchiveForm(type,idx)}
+function deleteArchive(type,idx){
+ if(!confirm('حذف ملف الأرشيف؟'))return;
+ const arr=archiveRows(type); const x=arr[idx];
+ arr.splice(idx,1); save(); logActivity('حذف ملف أرشيف',x?.['رقم الملف']||''); render();
+}
+function printArchive(type){
+ const rows=archiveRows(type), heads=['رقم الملف','رقم القضية','اسم الموكل','حالة القضية','تاريخ الأرشفة','ملاحظة'];
+ const data=rows.map(r=>heads.map(h=>r[h]||''));
+ const title=type==='ended'?'أرشيف القضايا المنتهية':'أرشيف القضايا المتحركة';
+ const w=window.open('','_blank');
+ w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Tahoma,Arial;padding:20px}h1,h2{text-align:center}.table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid #777;padding:6px;text-align:right}.table th{background:#eee}</style></head><body><h1>المحامي عبدالرحمن الوادي</h1><h2>${title}</h2>${table(data,heads)}<script>window.onload=()=>window.print()<\/script></body></html>`);
+ w.document.close();
+}
+function exportArchive(type){
+ const rows=archiveRows(type), heads=['رقم الملف','رقم القضية','اسم الموكل','حالة القضية','تاريخ الأرشفة','ملاحظة'];
+ const csv='\ufeff'+[heads,...rows.map(r=>heads.map(h=>r[h]||''))].map(r=>r.map(x=>'"'+String(x).replaceAll('"','""')+'"').join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+ a.download=(type==='ended'?'أرشيف_القضايا_المنتهية':'أرشيف_القضايا_المتحركة')+'.csv';a.click();
+}
+
+function render_cash(){let inc=sum('income','المبلغ'),exp=sum('expenses','المبلغ');return `<div class="cards"><div class="card"><div class="label">إجمالي المقبوضات</div><div class="value">${money(inc)}</div></div><div class="card"><div class="label">إجمالي المصروفات</div><div class="value">${money(exp)}</div></div><div class="card"><div class="label">الرصيد الحالي</div><div class="value ${inc-exp>=0?'positive':'negative'}">${money(inc-exp)}</div></div></div><div class="panel"><h2>الصندوق</h2><p class="muted">الرصيد = إجمالي الإيرادات − إجمالي المصروفات. يمكن تسجيل كل حركة من صفحتي الإيرادات والمصروفات.</p></div>`}
+function render_reports(){
+ let inc=sum('income','المبلغ'),exp=sum('expenses','المبلغ'),byLaw={};
+ db.income.forEach(r=>{let n=r['المحامي']||'غير محدد';byLaw[n]=(byLaw[n]||0)+Number(r['المبلغ']||0)});
+ return `<div class="cards">
+ <div class="card"><div class="label">الإيرادات</div><div class="value">${money(inc)}</div></div>
+ <div class="card"><div class="label">المصروفات</div><div class="value">${money(exp)}</div></div>
+ <div class="card"><div class="label">صافي الدخل</div><div class="value">${money(inc-exp)}</div></div>
+ <div class="card"><div class="label">إجمالي الجلسات</div><div class="value">${visibleRows('sessions').length}</div></div>
+ <div class="card"><div class="label">القضايا المتحركة</div><div class="value">${db.cases.filter(r=>!['منتهية','مغلقة','موقوفة','محفوظة'].includes(String(r['حالة القضية']||''))).length}</div></div>
+ <div class="card"><div class="label">القضايا المنتهية</div><div class="value">${db.cases.filter(r=>['منتهية','مغلقة'].includes(String(r['حالة القضية']||''))).length}</div></div>
+ </div>
+ <div class="panel">
+ <h2>📁 كشف القضايا</h2>
+ <div class="formgrid">
+  <div class="field"><label>حالة القضية</label><select id="caseStatus"><option value="all">كل القضايا</option><option value="moving">القضايا المتحركة</option><option value="ended">القضايا المنتهية</option><option value="stopped">القضايا الموقوفة</option><option value="saved">القضايا المحفوظة</option></select></div>
+  <div class="field"><label>اسم الموكل</label><input id="caseClient" placeholder="ابحث باسم الموكل"></div>
+  <div class="field"><label>رقم القضية</label><input id="caseNoReport" placeholder="رقم القضية"></div>
+  <div class="field"><label>رقم الملف</label><input id="caseFileReport" placeholder="رقم الملف في الأرشيف"></div>
+  <div class="field"><label>المحكمة</label><input id="caseCourtReport" placeholder="اسم المحكمة"></div>
+ </div><br>
+ <div class="actions"><button class="btn" onclick="generateCasesReport()">عرض الكشف</button><button class="btn secondary" onclick="printCasesReport()">🖨️ طباعة</button><button class="btn secondary" onclick="exportCasesReportCSV()">تصدير CSV/Excel</button></div>
+ <div id="casesReportResult" style="margin-top:16px"></div>
+ </div>
+ <div class="panel">
+ <h2>📅 كشف الجلسات حسب التاريخ</h2>
+ <div class="formgrid">
+ <div class="field"><label>من تاريخ</label><input type="date" id="reportFrom"></div>
+ <div class="field"><label>إلى تاريخ</label><input type="date" id="reportTo"></div>
+ <div class="field"><label>المحكمة</label><input id="reportCourt" placeholder="كل المحاكم"></div>
+ <div class="field"><label>رقم القضية</label><input id="reportCase" placeholder="كل القضايا"></div>
+ <div class="field"><label>اسم الموكل</label><input id="reportClient" placeholder="ابحث باسم الموكل"></div>
+ </div><br>
+ <div class="actions"><button class="btn" onclick="generateSessionsReport()">عرض الكشف</button><button class="btn secondary" onclick="printSessionsReport()">🖨️ طباعة الكشف</button><button class="btn secondary" onclick="exportSessionsReportCSV()">تصدير CSV/Excel</button></div>
+ <div id="sessionsReportResult" style="margin-top:16px"></div>
+ </div>
+ <div class="panel"><h2>الإيرادات حسب المحامي</h2>${table(Object.entries(byLaw).map(([a,b])=>[a,money(b)]),['المحامي','الإيرادات'])}</div>`}
+
+function getCasesReportRows(){
+ const status=document.getElementById('caseStatus')?.value||'all';
+ const client=(document.getElementById('caseClient')?.value||'').trim().toLowerCase();
+ const no=(document.getElementById('caseNoReport')?.value||'').trim().toLowerCase();
+ const file=(document.getElementById('caseFileReport')?.value||'').trim().toLowerCase();
+ const court=(document.getElementById('caseCourtReport')?.value||'').trim().toLowerCase();
+ return visibleRows('cases').filter(r=>{
+  const st=String(r['حالة القضية']||'').trim();
+  if(status==='moving' && ['منتهية','مغلقة','موقوفة','محفوظة'].includes(st))return false;
+  if(status==='ended' && !['منتهية','مغلقة'].includes(st))return false;
+  if(status==='stopped' && st!=='موقوفة')return false;
+  if(status==='saved' && st!=='محفوظة')return false;
+  if(client&&!String(r['اسم الموكل']||'').toLowerCase().includes(client))return false;
+  if(no&&!String(r['رقم القضية']||'').toLowerCase().includes(no))return false;
+  if(court&&!String(r['المحكمة']||'').toLowerCase().includes(court))return false;
+  if(file){let a=db.archive||[]; if(!a.some(x=>String(x['رقم الملف']||'').toLowerCase().includes(file)&&String(x['رقم القضية']||'')===String(r['رقم القضية']||'')))return false;}
+  return true;
+ }).sort((a,b)=>String(a['اسم الموكل']||'').localeCompare(String(b['اسم الموكل']||'')));
+}
+function generateCasesReport(){const rows=getCasesReportRows(),result=document.getElementById('casesReportResult');if(!result)return;const heads=['رقم الملف','رقم القضية','اسم الموكل','المحكمة','الدائرة/الشعبة','المحامي المسؤول','حالة القضية','تاريخ التسجيل','آخر إجراء','الإجراء القادم','ملاحظات'];const data=rows.map(r=>{let ar=(db.archive||[]).find(x=>String(x['رقم القضية']||'')===String(r['رقم القضية']||''));return [ar?.['رقم الملف']||'',...heads.slice(1).map(x=>r[x]||'')];});result.innerHTML=`<div class="notice"><b>كشف القضايا:</b> عدد القضايا: <b>${rows.length}</b></div>${table(data,heads)}`}
+function printCasesReport(){const rows=getCasesReportRows();const heads=['رقم الملف','رقم القضية','اسم الموكل','المحكمة','الدائرة/الشعبة','المحامي المسؤول','حالة القضية','تاريخ التسجيل','آخر إجراء','الإجراء القادم','ملاحظات'];const data=rows.map(r=>{let ar=(db.archive||[]).find(x=>String(x['رقم القضية']||'')===String(r['رقم القضية']||''));return [ar?.['رقم الملف']||'',...heads.slice(1).map(x=>r[x]||'')];});const w=window.open('','_blank');w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>كشف القضايا - المحامي عبدالرحمن الوادي</title><style>body{font-family:Tahoma,Arial;padding:20px}h1,h2{text-align:center}.table{width:100%;border-collapse:collapse;font-size:10px}.table th,.table td{border:1px solid #777;padding:5px;text-align:right}.table th{background:#eee}</style></head><body><h1>المحامي عبدالرحمن الوادي</h1><h2>كشف القضايا</h2>${table(data,heads)}<script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()}
+function exportCasesReportCSV(){const rows=getCasesReportRows();const heads=['رقم الملف','رقم القضية','اسم الموكل','المحكمة','الدائرة/الشعبة','المحامي المسؤول','حالة القضية','تاريخ التسجيل','آخر إجراء','الإجراء القادم','ملاحظات'];const data=rows.map(r=>{let ar=(db.archive||[]).find(x=>String(x['رقم القضية']||'')===String(r['رقم القضية']||''));return [ar?.['رقم الملف']||'',...heads.slice(1).map(x=>r[x]||'')];});const csv='\ufeff'+[heads,...data].map(r=>r.map(x=>'"'+String(x).replaceAll('"','""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='كشف_القضايا.csv';a.click()}
+
+function getSessionsReportRows(){
+const from=document.getElementById('reportFrom')?.value||'';
+const to=document.getElementById('reportTo')?.value||'';
+const court=(document.getElementById('reportCourt')?.value||'').trim().toLowerCase();
+const caseNo=(document.getElementById('reportCase')?.value||'').trim().toLowerCase();
+return visibleRows('sessions').filter(r=>{
+const d=r['تاريخ الجلسة']||'';
+if(from&&d<from)return false;
+if(to&&d>to)return false;
+if(court&&!String(r['المحكمة']||'').toLowerCase().includes(court))return false;
+if(caseNo&&!String(r['رقم القضية']||'').toLowerCase().includes(caseNo))return false;
+return true;
+}).sort((a,b)=>(a['تاريخ الجلسة']||'').localeCompare(b['تاريخ الجلسة']||'')||(a['وقت الجلسة']||'').localeCompare(b['وقت الجلسة']||''));
+}
+function generateSessionsReport(){
+const rows=getSessionsReportRows(), result=document.getElementById('sessionsReportResult');
+if(!result)return;
+const from=document.getElementById('reportFrom')?.value||'بدون تحديد';
+const to=document.getElementById('reportTo')?.value||'بدون تحديد';
+const heads=['رقم الجلسة','رقم القضية','اسم الموكل','المركز القانوني','تاريخ الجلسة','وقت الجلسة','المحكمة','الدائرة/الشعبة','المحامي الحاضر','نوع الجلسة','ما تم في الجلسة','قرار/تأجيل','موعد الجلسة القادمة','ملاحظات'];
+const data=rows.map(r=>heads.map(x=>r[x]||''));
+result.innerHTML=`<div class="notice"><b>كشف الجلسات:</b> من ${from} إلى ${to} — عدد الجلسات: <b>${rows.length}</b></div>${table(data,heads)}`;
+}
+function printSessionsReport(){
+const rows=getSessionsReportRows();
+const from=document.getElementById('reportFrom')?.value||'بدون تحديد';
+const to=document.getElementById('reportTo')?.value||'بدون تحديد';
+const heads=['رقم الجلسة','رقم القضية','اسم الموكل','المركز القانوني','تاريخ الجلسة','وقت الجلسة','المحكمة','الدائرة/الشعبة','المحامي الحاضر','نوع الجلسة','ما تم في الجلسة','قرار/تأجيل','موعد الجلسة القادمة','ملاحظات'];
+const data=rows.map(r=>heads.map(x=>r[x]||''));
+const w=window.open('','_blank');
+w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>كشف الجلسات - المحامي عبدالرحمن الوادي</title><style>body{font-family:Tahoma,Arial;padding:20px}h1,h2,p{text-align:center}.table{width:100%;border-collapse:collapse;font-size:10px}.table th,.table td{border:1px solid #777;padding:5px;text-align:right}.table th{background:#eee}@media print{.side,.top,.actions,.search,.btn{display:none!important}.main{margin:0;width:100%;padding:0}.panel{box-shadow:none}body{background:#fff}} </style></head><body><h1>المحامي عبدالرحمن الوادي</h1><h2>كشف الجلسات</h2><p>الفترة: من <b>${from}</b> إلى <b>${to}</b> — عدد الجلسات: <b>${rows.length}</b></p>${table(data,heads)}<script>window.onload=()=>window.print()<\/script></body></html>`);
+w.document.close();
+}
+function exportSessionsReportCSV(){
+const rows=getSessionsReportRows();
+const heads=['رقم الجلسة','رقم القضية','اسم الموكل','المركز القانوني','تاريخ الجلسة','وقت الجلسة','المحكمة','الدائرة/الشعبة','المحامي الحاضر','نوع الجلسة','ما تم في الجلسة','قرار/تأجيل','موعد الجلسة القادمة','ملاحظات'];
+const csv='\\ufeff'+[heads,...rows.map(r=>heads.map(c=>r[c]??''))].map(r=>r.map(x=>'"'+String(x).replaceAll('"','""')+'"').join(',')).join('\\n');
+const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='كشف_الجلسات_مؤسسة_الجحدبي.csv';a.click();
+}
+
+function printModule(k){
+  const q=(document.getElementById('q')?.value||'').toLowerCase();
+  const rows=db[k].filter(r=>JSON.stringify(r).toLowerCase().includes(q));
+  const heads=schemas[k], data=rows.map(r=>heads.map(c=>r[c]??''));
+  const w=window.open('','_blank');
+  w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>${modules[k]} - المحامي عبدالرحمن الوادي</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Tahoma,Arial;padding:10px}h1,h2{text-align:center}.table{width:100%;border-collapse:collapse;font-size:10px}.table th,.table td{border:1px solid #777;padding:5px;text-align:right}.table th{background:#eee}@media print{.side,.top,.actions,.search,.btn{display:none!important}.main{margin:0;width:100%;padding:0}.panel{box-shadow:none}body{background:#fff}} </style></head><body><h1>المحامي عبدالرحمن الوادي</h1><h2>${modules[k]}</h2>${table(data,heads)}<script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+function pdfModule(k){
+  alert('سيتم فتح نافذة الطباعة. اختر "حفظ بصيغة PDF" من خيارات الطابعة لحفظ الكشف كملف PDF.');
+  printModule(k);
+}
+
+function exportCSV(k){let sc=schemas[k], rows=[sc,...db[k].map(r=>sc.map(c=>r[c]??''))];let csv='\\ufeff'+rows.map(r=>r.map(x=>'"'+String(x).replaceAll('"','""')+'"').join(',')).join('\\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=k+'.csv';a.click()}
+
+function exportOfflinePackage(){
+ const payload={version:2,exportedAt:new Date().toISOString(),db};
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+ a.download='بيانات_النظام_بدون_انترنت.json';a.click();
+ logActivity('تصدير بيانات','حزمة النظام');
+}
+
+function backup(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download='نسخة_احتياطية_مؤسسة_المحاماة.json';a.click();logActivity('نسخة احتياطية','تصدير قاعدة البيانات')}
+function restore(){document.getElementById('file').click()};document.getElementById('file').onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);ensureUserFields();ensureRecordIds();save();render();alert('تمت الاستعادة بنجاح')}catch(_){alert('ملف النسخة الاحتياطية غير صالح')}};r.readAsText(f)};
+
+let currentUser=null;
+function authKey(){return 'lawFirmCurrentUser'}
+function showLogin(){
+ document.body.innerHTML=`<div id="loginScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f7f9;padding:20px">
+ <div style="background:#fff;width:min(420px,100%);padding:28px;border-radius:16px;box-shadow:0 5px 25px #0002;text-align:right">
+ <h2 style="margin-top:0">⚖️ المحامي عبدالرحمن الوادي</h2><p class="muted">تسجيل الدخول إلى النظام</p>
+ <form id="loginForm">
+ <div class="field"><label>اسم المستخدم</label><input id="loginUser" required autocomplete="username"></div><br>
+ <div class="field"><label>كلمة المرور</label><input id="loginPass" type="password" required autocomplete="current-password"></div><br>
+ <button class="btn" style="width:100%">دخول</button>
+ </form><div id="loginMsg" style="color:#b42318;margin-top:12px"></div>
+ <div class="notice" style="margin-top:15px;font-size:12px">الحساب الافتراضي: <b>admin</b> — كلمة المرور: <b>1234</b>. غيّرها بعد أول دخول، ويمكن للمشرف إنشاء حسابات متعددة وربطها به.</div>
+ </div></div>`;
+ document.getElementById('loginForm').onsubmit=e=>{
+  e.preventDefault(); const u=document.getElementById('loginUser').value.trim(), p=document.getElementById('loginPass').value;
+  ensureUserFields();
+   const found=db.users.find(x=>x['اسم المستخدم']===u&&x['كلمة المرور']===p&&x['الحالة']!=='موقوف');
+  if(!found){document.getElementById('loginMsg').textContent='اسم المستخدم أو كلمة المرور غير صحيحة.';return}
+  currentUser=found;
+found['آخر دخول']=new Date().toLocaleString('ar-YE');
+found['آخر نشاط']=found['آخر دخول'];
+save();
+logActivity('تسجيل دخول','دخول ناجح');
+sessionStorage.setItem(authKey(),u); location.reload();
+ };
+}
+function logout(){sessionStorage.removeItem(authKey());location.reload()}
+function currentRole(){return currentUser?.['الدور']||'مدير المؤسسة'}
+function isAdmin(){return currentRole()==='مدير المؤسسة'}
+function isSupervisor(){return isAdmin() || currentRole()==='مشرف'}
+function canManageUsers(){return isSupervisor()}
+function canSeeAllData(){return isAdmin() || currentRole()==='مشرف'}
+function userScope(){
+  if(canSeeAllData()) return null;
+  return currentUser?.['اسم المستخدم']||'';
+}
+function recordOwner(r){
+  return r?.['أنشأ بواسطة'] || r?.['المستخدم'] || '';
+}
+function visibleRows(k){
+  const rows=db[k]||[];
+  const scope=userScope();
+  if(scope===null) return rows;
+  return rows.filter(r=>recordOwner(r)===scope || (r['المشرف']||'')===scope);
+}
+function allowedModulesForUser(){
+  if(isAdmin()) return Object.keys(modules);
+  if(isSupervisor()) return Object.keys(modules);
+  const p=String(currentUser?.['الصلاحيات']||'قياسية');
+  if(p==='قراءة فقط') return ['dashboard','clients','lawyers','courts','cases','sessions','reports','archive','password'];
+  if(p==='مالية') return ['dashboard','clients','cases','fees','income','expenses','lawyerAccounts','cash','advances','payroll','reports','password'];
+  if(p==='أرشيف') return ['dashboard','clients','cases','sessions','archive','reports','password'];
+  return Object.keys(modules).filter(k=>!['users','settings'].includes(k));
+}
+function canAccessModule(k){return allowedModulesForUser().includes(k)}
+
+
+
+function render_password(){return `<div class="panel"><h2>🔑 تغيير كلمة المرور</h2><div class="notice">يمكنك تغيير كلمة المرور الخاصة بالمستخدم الحالي. بعد الحفظ استخدم كلمة المرور الجديدة في تسجيل الدخول.</div><div class="formgrid"><div class="field"><label>كلمة المرور الحالية</label><input id="oldPassword" type="password" autocomplete="current-password"></div><div class="field"><label>كلمة المرور الجديدة</label><input id="newPassword" type="password" autocomplete="new-password"></div><div class="field"><label>تأكيد كلمة المرور الجديدة</label><input id="confirmPassword" type="password" autocomplete="new-password"></div></div><br><div class="actions"><button class="btn" onclick="changeMyPassword()">🔐 حفظ كلمة المرور</button></div></div>`}
+function changeMyPassword(){const u=db.users.find(x=>x['اسم المستخدم']===currentUser?.['اسم المستخدم']);if(!u)return alert('المستخدم الحالي غير موجود.');const old=document.getElementById('oldPassword').value,n=document.getElementById('newPassword').value,c=document.getElementById('confirmPassword').value;if(old!==u['كلمة المرور'])return alert('كلمة المرور الحالية غير صحيحة.');if(n.length<4)return alert('كلمة المرور الجديدة يجب ألا تقل عن 4 أحرف أو أرقام.');if(n!==c)return alert('تأكيد كلمة المرور غير مطابق.');u['كلمة المرور']=n;save();alert('تم تغيير كلمة المرور بنجاح.');go('dashboard')}
+
+function render_settings(){
+ return `<div class="panel">
+   <h2>⚙️ إعدادات النظام</h2>
+   <div class="formgrid">
+    <div class="field"><label>اسم المؤسسة / المحامي</label><input id="setFirm" value="${esc(localStorage.getItem('firmName')||'المحامي عبدالرحمن الوادي')}"></div>
+    <div class="field"><label>عنوان النظام</label><input id="setTitle" value="${esc(localStorage.getItem('systemTitle')||'نظام إدارة القضايا والمحاماة')}"></div>
+    <div class="field"><label>رقم الهاتف</label><input id="setPhone" value="${esc(localStorage.getItem('firmPhone')||'')}"></div>
+    <div class="field"><label>العنوان</label><input id="setAddress" value="${esc(localStorage.getItem('firmAddress')||'')}"></div>
+   </div><br>
+   <div class="actions">
+    <button class="btn" onclick="saveSettings()">💾 حفظ الإعدادات</button>
+    <button class="btn secondary" onclick="resetSettings()">↺ الإعدادات الافتراضية</button>
+   </div>
+  </div>
+  <div class="panel">
+   <h2>🔐 إعدادات الحساب</h2>
+   <p class="muted">يمكن لمدير النظام إدارة المستخدمين وكلمات المرور من قسم المستخدمين.</p>
+   <button class="btn secondary" onclick="go('users')">إدارة المستخدمين</button> <button class="btn secondary" onclick="go('password')">🔑 تغيير كلمة المرور</button>
+  </div>
+  <div class="panel">
+   <h2>💾 النسخ الاحتياطي</h2>
+   <div class="actions">
+    <button class="btn secondary" onclick="backup()">تنزيل نسخة احتياطية</button>
+    <button class="btn secondary" onclick="restore()">استعادة نسخة احتياطية</button>
+     <button class="btn secondary" onclick="exportOfflinePackage()">📦 تصدير حزمة البيانات</button>
+   </div>
+  </div>
+  <div class="panel">
+   <h2>🖨️ إعدادات التقارير</h2>
+   <p class="muted">يمكن طباعة أي كشف أو حفظه بصيغة PDF من أزرار الطباعة وPDF داخل الأقسام والتقارير.</p>
+  </div>`;
+}
+function saveSettings(){
+ localStorage.setItem('firmName',document.getElementById('setFirm').value.trim()||'المحامي عبدالرحمن الوادي');
+ localStorage.setItem('systemTitle',document.getElementById('setTitle').value.trim()||'نظام إدارة القضايا والمحاماة');
+ localStorage.setItem('firmPhone',document.getElementById('setPhone').value.trim());
+ localStorage.setItem('firmAddress',document.getElementById('setAddress').value.trim());
+ alert('تم حفظ الإعدادات بنجاح.');
+ render();
+}
+function resetSettings(){
+ if(confirm('إعادة الإعدادات الافتراضية؟')){
+  localStorage.removeItem('firmName'); localStorage.removeItem('systemTitle');
+  localStorage.removeItem('firmPhone'); localStorage.removeItem('firmAddress');
+  render();
+ }
+}
+
+function render_users(){
+ if(!canManageUsers()) return `<div class="panel"><div class="notice">ليس لديك صلاحية إدارة المستخدمين.</div></div>`;
+ ensureUserFields();
+ const supervised=isAdmin()?db.users:db.users.filter(u=>u['المشرف']===currentUser['اسم المستخدم']||u['اسم المستخدم']===currentUser['اسم المستخدم']);
+ const rows=supervised.map((r,i)=>[
+   r['رقم المستخدم'],r['اسم المستخدم'],r['الاسم الكامل'],r['الدور'],
+   r['المشرف']||'—',r['الصلاحيات']||'—',r['الحالة'],
+   (r['آخر دخول']||'—'),(r['آخر نشاط']||'—')
+ ]);
+ const acts=db.activity.filter(a=>isAdmin()||a['اسم المستخدم']===currentUser['اسم المستخدم']||
+   supervised.some(u=>u['اسم المستخدم']===a['اسم المستخدم'])).slice(0,100);
+ return `<div class="cards">
+   <div class="card"><div class="label">إجمالي المستخدمين</div><div class="value">${db.users.length}</div></div>
+   <div class="card"><div class="label">المستخدمون التابعون</div><div class="value">${supervised.filter(u=>u['اسم المستخدم']!==currentUser['اسم المستخدم']).length}</div></div>
+   <div class="card"><div class="label">المستخدمون الفعالون</div><div class="value">${supervised.filter(u=>u['الحالة']==='فعال').length}</div></div>
+ </div>
+ <div class="panel"><div class="actions" style="justify-content:space-between">
+   <h2 style="margin:0">🔐 إدارة المستخدمين والربط بالمشرف</h2>
+   <div><button class="btn" onclick="openUserForm()">＋ إضافة مستخدم</button> <button class="btn secondary" onclick="logout()">تسجيل الخروج</button></div>
+ </div><br>
+ <div class="notice">المشرف يستطيع ربط عدة مستخدمين بحسابه، ومتابعة بياناتهم وآخر دخول وآخر نشاط. مدير المؤسسة يرى جميع المستخدمين.</div>
+ <div class="tablewrap"><table class="table"><thead><tr>
+ ${['رقم المستخدم','اسم المستخدم','الاسم الكامل','الدور','المشرف','الصلاحيات','الحالة','آخر دخول','آخر نشاط','إجراء'].map(h=>`<th>${h}</th>`).join('')}
+ </tr></thead><tbody>
+ ${supervised.map(r=>{
+   const idx=db.users.indexOf(r);
+   return `<tr>${[r['رقم المستخدم'],r['اسم المستخدم'],r['الاسم الكامل'],r['الدور'],r['المشرف']||'—',r['الصلاحيات']||'—',r['الحالة'],r['آخر دخول']||'—',r['آخر نشاط']||'—'].map(v=>`<td>${esc(v)}</td>`).join('')}
+   <td><button class="btn secondary" onclick="openUserForm(${idx})">تعديل</button></td></tr>`;
+ }).join('')}
+ </tbody></table></div></div>
+ <div class="panel"><h2>📋 سجل نشاط المستخدمين</h2>
+ ${table(acts.map(a=>[a['التاريخ والوقت'],a['اسم المستخدم'],a['الاسم الكامل'],a['العملية'],a['التفاصيل']]),
+ ['التاريخ والوقت','اسم المستخدم','الاسم الكامل','العملية','التفاصيل'])}</div>`;
+}
+function openUserForm(idx=null){
+ if(!canManageUsers()) return alert('ليس لديك صلاحية.');
+ const old=idx==null?{}:db.users[idx];
+ const supervisors=db.users.filter((u,i)=>i!==idx&&(u['الدور']==='مدير المؤسسة'||u['الدور']==='مشرف'));
+ const fields=[
+  ['رقم المستخدم','text'],['اسم المستخدم','text'],['الاسم الكامل','text'],
+  ['الدور','select'],['المشرف','supervisor'],['الصلاحيات','permissions'],
+  ['كلمة المرور','password'],['الحالة','select'],['ملاحظات','textarea']
+ ].map(([c,t])=>{
+  let v=old[c]??'';
+  if(c==='الدور') return `<div class="field"><label>${c}</label><select name="${c}"><option>مدير المؤسسة</option><option>مشرف</option><option>محامي</option><option>سكرتير</option><option>مالية</option><option>أرشيف</option></select></div>`;
+  if(c==='الحالة') return `<div class="field"><label>${c}</label><select name="${c}"><option>فعال</option><option>موقوف</option></select></div>`;
+  if(c==='المشرف') return `<div class="field"><label>${c}</label><select name="${c}"><option value="">بدون مشرف</option>${supervisors.map(s=>`<option value="${esc(s['اسم المستخدم'])}" ${s['اسم المستخدم']===v?'selected':''}>${esc(s['الاسم الكامل']||s['اسم المستخدم'])} — ${esc(s['اسم المستخدم'])}</option>`).join('')}</select></div>`;
+  if(c==='الصلاحيات') return `<div class="field"><label>${c}</label><select name="${c}"><option>كاملة</option><option>قياسية</option><option>قراءة فقط</option><option>مالية</option><option>أرشيف</option></select></div>`;
+  return `<div class="field"><label>${c}</label>${t==='textarea'?`<textarea name="${c}">${esc(v)}</textarea>`:`<input type="${t}" name="${c}" value="${esc(v)}" ${c==='رقم المستخدم'&&idx==null?'required':''}>`}</div>`;
+ }).join('');
+ let modal=document.createElement('div');modal.className='modal';modal.id='modal';
+ modal.innerHTML=`<div class="modalbox"><h2>${idx==null?'إضافة':'تعديل'} مستخدم</h2>
+ <div class="notice">يمكن للمشرف ربط عدة مستخدمين به، ومتابعة بياناتهم وسجل نشاطهم من لوحة المشرف.</div>
+ <form id="uf"><div class="formgrid">${fields}</div><br><div class="actions"><button class="btn">حفظ</button><button class="btn secondary" type="button" onclick="closeModal()">إلغاء</button></div></form></div>`;
+ document.body.appendChild(modal);
+ const role=modal.querySelector('[name="الدور"]'); role.value=old['الدور']||'محامي';
+ const status=modal.querySelector('[name="الحالة"]'); status.value=old['الحالة']||'فعال';
+ const perm=modal.querySelector('[name="الصلاحيات"]'); perm.value=old['الصلاحيات']||'قياسية';
+ const sup=modal.querySelector('[name="المشرف"]'); sup.value=old['المشرف']||'';
+ document.getElementById('uf').onsubmit=e=>{
+  e.preventDefault();let o={};new FormData(e.target).forEach((v,c)=>o[c]=v);
+  if(!o['رقم المستخدم']) o['رقم المستخدم']=id('USR');
+  if(!o['كلمة المرور'] && idx!=null)o['كلمة المرور']=old['كلمة المرور'];
+  if(db.users.some((x,i)=>i!==idx&&x['اسم المستخدم']===o['اسم المستخدم'])) return alert('اسم المستخدم مستخدم مسبقاً.');
+  if(idx==null)db.users.push(o);else db.users[idx]=o;
+  ensureUserFields();
+  // إعادة بناء قائمة المستخدمين التابعين لكل مشرف
+  db.users.forEach(u=>u['المستخدمون التابعون']=db.users.filter(x=>x['المشرف']===u['اسم المستخدم']).map(x=>x['اسم المستخدم']));
+  save();logActivity(idx==null?'إنشاء مستخدم':'تعديل مستخدم',o['اسم المستخدم']);closeModal();render();
+ };
+}
+
+
+
+(function migrateArchiveStores(){
+ if(db.__archiveMigratedV2)return;
+ const old=db.archive||[];
+ old.forEach(a=>{
+   const c=(db.cases||[]).find(x=>String(x['رقم القضية']||'')===String(a['رقم القضية']||''));
+   const type=archiveStatusForCase(c);
+   const target=type==='ended'?db.archive_ended:db.archive_moving;
+   if(!target.some(x=>String(x['رقم القضية']||'')===String(a['رقم القضية']||''))){
+     target.push({
+       ['رقم الملف']:a['رقم الملف']||((type==='ended'?'م-منتهية-':'م-متحركة-')+archiveNextNumber(type)),
+       ['رقم القضية']:a['رقم القضية']||'',
+       ['اسم الموكل']:a['اسم الموكل']||c?.['اسم الموكل']||'',
+       ['حالة القضية']:c?.['حالة القضية']||'',
+       ['تاريخ الأرشفة']:a['تاريخ الأرشفة']||new Date().toISOString().slice(0,10),
+       ['ملاحظة']:a['ملاحظة']||'',
+       ['أنشأ بواسطة']:a['أنشأ بواسطة']||'admin'
+     });
+   }
+ });
+ db.__archiveMigratedV2=true; save();
+})();
+
+(function migrateOwners(){
+ const owner=db.users.find(u=>u['الدور']==='مدير المؤسسة')?.['اسم المستخدم']||'admin';
+ for(const k of Object.keys(schemas)){
+   (db[k]||[]).forEach(r=>{if(!r['أنشأ بواسطة']) r['أنشأ بواسطة']=owner;});
+ }
+ ensureUserFields(); save();
+})();
+
+
+(async function(){
+  ensureRecordIds();
+  await initialSync();
+  updateSyncStatus(SYNC_ENABLED);
+  const u=sessionStorage.getItem(authKey());
+  if(u) currentUser=db.users.find(x=>x['اسم المستخدم']===u)||null;
+  if(!currentUser){showLogin();startSync();return}
+  nav();render();startSync();
+})();
+
+</script></body></html>
